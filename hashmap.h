@@ -1,4 +1,9 @@
 //every reallocation of the array will double its size by 2.
+//since the array should never be full, i dont think i have to count control the while(arr[index].isOccupied) loops
+
+//Should maybe figure out better way to value initialise array in clear() method without using new operator
+//with the current implement, any Key used must overload operator!=
+//operator[] method has no error checking to check if key is actually in the hashmap
 
 template <typename Key, typename Value>
 class Hashmap{
@@ -13,6 +18,7 @@ public:
     ~Hashmap<Key, Value>();
 
     void insert(Key key, Value value);
+    bool erase(Key key);
     void clear();
 
     Value& operator[](Key key);
@@ -42,6 +48,7 @@ Hashmap<Key, Value>::~Hashmap(){
     delete[] arr;
 }
 
+
 template <typename Key, typename Value>
 void Hashmap<Key, Value>::insert(Key key, Value value){
     if(elementsStored + 1 > arrSize/sizeIncreaseFactor){
@@ -50,13 +57,8 @@ void Hashmap<Key, Value>::insert(Key key, Value value){
 
     size_t index = hash_function(key);
 
-    // //should work
-    // while(arr[index].isOccupied){
-    //    index = hash_function(index);
-    //}
-
     while(arr[index].isOccupied){
-        ++index;
+        index = (index + 1) % arrSize;
     }
 
     KeyValuePair temp = {key, value, true};
@@ -64,18 +66,37 @@ void Hashmap<Key, Value>::insert(Key key, Value value){
     ++elementsStored;
 }
 
+template <typename Key, typename Value>
+bool Hashmap<Key, Value>::erase(Key key){
+    size_t index = hash_function(key);
+    size_t i = 0;
+
+    while(i < arrSize && arr[index].key != key){
+        index = (index + 1) % arrSize;
+    }
+
+    if(i < arrSize){
+        arr[index].isOccupied = false;
+        return true;
+    } else {
+        return false;
+    }
+}
+
+template <typename Key, typename Value>
+void Hashmap<Key, Value>::clear(){
+    delete[] arr;
+    //Value initialise
+    arr = new KeyValuePair[arrSize]();
+}
+
 
 template <typename Key, typename Value>
 Value& Hashmap<Key, Value>::operator[](Key key){
     size_t index = hash_function(key);
 
-    // //should work
-    // while(arr[index].key != key){
-    //     index = hash_function(index);
-    // }
-
     while(arr[index].key != key){
-        ++index;
+        index = (index + 1) % arrSize;
     }
 
     return arr[index].value;
@@ -92,20 +113,16 @@ size_t Hashmap<Key, Value>::hash_function(Key key){
 
 template <typename Key, typename Value>
 void Hashmap<Key, Value>::reallocate_arr(){
-    //value initialise array    
-    KeyValuePair* newArr = new KeyValuePair[arrSize * sizeIncreaseFactor]();
+    //value initialise array 
+    size_t newArrSize = arrSize * sizeIncreaseFactor;    
+    KeyValuePair* newArr = new KeyValuePair[newArrSize]();
  
     for(size_t i = 0; i < arrSize; ++i){
         if(arr[i].isOccupied){
             size_t newIndex = hash_function(arr[i].key);
 
-            // //should work
-            // while(newArr[newIndex].isOccupied){
-            //     newIndex = hash_function(newIndex);
-            // }
-
             while(newArr[newIndex].isOccupied){
-                ++newIndex;
+                newIndex = (newIndex + 1) & newArrSize;
             }
 
             newArr[newIndex] = arr[i];
@@ -113,6 +130,6 @@ void Hashmap<Key, Value>::reallocate_arr(){
     }
 
     delete[] arr;
-    arrSize *= sizeIncreaseFactor;
+    arrSize = newArrSize;
     arr = newArr;
 }
