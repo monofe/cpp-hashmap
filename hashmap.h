@@ -5,6 +5,10 @@
 //with the current implement, any Key used must overload operator!=
 //operator[] method has no error checking to check if key is actually in the hashmap
 
+#ifndef HASHMAP_H
+#define HASHMAP_H
+
+
 template <typename Key, typename Value>
 class Hashmap{
     typedef struct {
@@ -15,6 +19,7 @@ class Hashmap{
 
 public:
     Hashmap<Key, Value>();
+    Hashmap<Key, Value>(size_t (*func)(Key));
     ~Hashmap<Key, Value>();
 
     void insert(Key key, Value value);
@@ -27,11 +32,13 @@ private:
     KeyValuePair* arr;
     size_t elementsStored;
     size_t arrSize;
+    size_t (*hash_function_ptr)(Key);
 
     const int initSize = 32;
     const int sizeIncreaseFactor = 2;
 
-    size_t hash_function(Key key);
+    size_t hash(Key key);
+    size_t default_hash_function(Key key);
     void reallocate_arr();
 };
 
@@ -41,6 +48,12 @@ Hashmap<Key, Value>::Hashmap(){
     //value initialise array
     arr = new KeyValuePair[initSize]();
     arrSize = initSize;
+    hash_function_ptr = nullptr;
+}
+
+template <typename Key, typename Value>
+Hashmap<Key, Value>::Hashmap(size_t (*func)(Key key)) : Hashmap() {
+    hash_function_ptr = func;
 }
 
 template <typename Key, typename Value>
@@ -55,9 +68,9 @@ void Hashmap<Key, Value>::insert(Key key, Value value){
         reallocate_arr();
     }
 
-    size_t index = hash_function(key);
+    size_t index = hash(key);
 
-    while(arr[index].isOccupied){
+    while(arr[index].isOccupied && arr[index].key != key){
         index = (index + 1) % arrSize;
     }
 
@@ -68,7 +81,7 @@ void Hashmap<Key, Value>::insert(Key key, Value value){
 
 template <typename Key, typename Value>
 bool Hashmap<Key, Value>::erase(Key key){
-    size_t index = hash_function(key);
+    size_t index = hash(key);
     size_t i = 0;
 
     while(i < arrSize && arr[index].key != key){
@@ -77,6 +90,7 @@ bool Hashmap<Key, Value>::erase(Key key){
 
     if(i < arrSize){
         arr[index].isOccupied = false;
+        arr[index].value = {};
         return true;
     } else {
         return false;
@@ -93,18 +107,39 @@ void Hashmap<Key, Value>::clear(){
 
 template <typename Key, typename Value>
 Value& Hashmap<Key, Value>::operator[](Key key){
-    size_t index = hash_function(key);
+    size_t index = hash(key);
+    size_t i = 0;
 
-    while(arr[index].key != key){
+    while(i++ < arrSize && arr[index].key != key){
         index = (index + 1) % arrSize;
     }
 
-    return arr[index].value;
+    if(i < arrSize){
+        return arr[index].value;
+    } else {
+        index = hash(key);
+        
+        while(arr[index].isOccupied){
+            index = (index + 1) % arrSize;
+        }
+        return arr[index].value;
+    }
+
 }
 
+template <typename Key, typename Value>
+size_t Hashmap<Key, Value>::hash(Key key){
+    if(hash_function_ptr != nullptr){ 
+        size_t index = (*hash_function_ptr)(key);
+        index %= arrSize;
+        return index;
+    } else {
+        return default_hash_function(key);
+    }
+}
 
 template <typename Key, typename Value>
-size_t Hashmap<Key, Value>::hash_function(Key key){
+size_t Hashmap<Key, Value>::default_hash_function(Key key){
     size_t temp = reinterpret_cast<size_t&>(key);   //using a reference here works for some reason
     temp *= 3853; //random ass prime number
     temp %= arrSize;
@@ -119,7 +154,7 @@ void Hashmap<Key, Value>::reallocate_arr(){
  
     for(size_t i = 0; i < arrSize; ++i){
         if(arr[i].isOccupied){
-            size_t newIndex = hash_function(arr[i].key);
+            size_t newIndex = hash(arr[i].key);
 
             while(newArr[newIndex].isOccupied){
                 newIndex = (newIndex + 1) & newArrSize;
@@ -133,3 +168,5 @@ void Hashmap<Key, Value>::reallocate_arr(){
     arrSize = newArrSize;
     arr = newArr;
 }
+
+#endif
