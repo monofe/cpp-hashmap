@@ -1,7 +1,7 @@
 # Cpp-Hashmap
 A basic Hashmap class for C++.
 
-###Member functions
+### Member functions
 `insert(Key key, Value value)` : Inserts a key-value pair into the hashmap.
 `erase(Key key)` : Erases a key-value pair from the hashmap. If the given key is found, it returns `true`, else `false`.
 `clear(Key key)` : Clears the contents of the hashmap.
